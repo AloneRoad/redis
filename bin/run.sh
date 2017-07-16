@@ -1,49 +1,77 @@
 #!/usr/bin/env bash
 
-set -e
+#$1 - file; $2 - variable; $3 - value; 
+Configure() {
+    CONFIG_FILE="$1"
+    VAR="$2" 
+    VAL="$3"
 
-#$1 - parameter; $2 - value; $3 - default value; $4 - file;
-Template() {
-    [[ -z "$2" ]] &&  sed -i "s/{{ $1 }}/$3/g" $4 || sed -i "s/{{ $1 }}/$2/g" $4
+    if [[ "$VAL" != "" ]]; then
+        CONFIG_LINE="$VAR $VAL"
+        sed -e "s/\(^#*\ *$VAR\(.*\)$\)/$CONFIG_LINE/g" $CONFIG_FILE > /tmp/config.tmp && mv -f /tmp/config.tmp $CONFIG_FILE
+
+        grep "^$CONFIG_LINE" $CONFIG_FILE
+
+        if [ $? -ne 0 ]; then
+            echo "$VAR $VAL" >> $CONFIG_FILE
+        fi
+    fi
 }
 
 CONF="/redis/config/config.conf"
+
 if [ -n "$SENTINEL" ]; then
     cp /redis/config/sentinel.conf $CONF
 
-    dockerize -wait tcp://$MASTER_IP:6379
-
-    Template master_name "$MASTER_NAME" mymaster $CONF
-    Template master_ip "$MASTER_IP" 127.0.0.1 $CONF
-    Template master_port "$MASTER_PORT" 6379 $CONF
-    Template quorum "$QUORUM" 2 $CONF
-    Template port "$SENTINEL_PORT" 26379 $CONF
-
-    if [ -n "$ANNOUNCE_IP" ]; then
-        echo "sentinel announce-ip $ANNOUNCE_IP" >> $CONF
-    fi
-    if [ -n "$ANNOUNCE_PORT" ]; then
-        echo "sentinel announce-port $ANNOUNCE_PORT" >> $CONF
+    if [[ "$MASTER_IP" == "" ]]; then
+        echo ">>> You need to set redis MASTER_IP for sentinel!"
+        exit 1
     fi
 
-    redis-sentinel $CONF
+    dockerize -wait tcp://$MASTER_IP:$MASTER_PORT
+
+    Configure $CONF 'sentinel monitor' "$MASTER_NAME $MASTER_IP $MASTER_PORT $QUORUM"
+    Configure $CONF 'port' "$SENTINEL_PORT"
+    Configure $CONF 'sentinel announce-ip' "$ANNOUNCE_IP"
+    Configure $CONF 'sentinel announce-port' "$SENTINEL_PORT" 
+    CMD='redis-sentinel'
+    
 else
     cp /redis/config/redis.conf $CONF
 
-    Template port "$REDIS_PORT" 6379 $CONF
+    if [[ "$ANNOUNCE_IP" == "" ]]; then
+        echo ">>> You need to set ANNOUNCE_IP for redis container"
+        exit 1
+    fi
 
-    if [ -n "$ANNOUNCE_IP" ]; then
-        echo "slave-announce-ip $ANNOUNCE_IP" >> $CONF
-    fi
-    if [ -n "$ANNOUNCE_PORT" ]; then
-        echo "slave-announce-port $ANNOUNCE_PORT" >> $CONF
-    fi
+    Configure $CONF 'port' "$REDIS_PORT"
+    Configure $CONF 'slave-announce-ip' "$ANNOUNCE_IP"
+    Configure $CONF 'slave-announce-port' "$REDIS_PORT"
     
     if [ -z "$MASTER" ]; then
-        [[ -z "$MASTER_ADDRESS" ]] && MASTER_ADDRESS="127.0.0.1"
-        [[ -z "$MASTER_PORT" ]] && MASTER_PORT=6379
-        echo "slaveof $MASTER_ADDRESS $MASTER_PORT" >> $CONF
-    fi
+        if [[ "$MASTER_ADDRESS" == "" ]]; then
+            echo ">>> You need to set MASTER_ADDRESS for slave!"
+            exit 1
+        fi
 
-    redis-server $CONF
+        Configure $CONF 'slaveof' "$MASTER_ADDRESS $MASTER_PORT"
+    fi
+    CMD='redis-server'
 fi
+
+
+echo ">>> Configuring file $CONF"
+IFS=';' read -ra CONFIG_PAIRS <<< "$CONFIGS"
+for CONFIG_PAIR in "${CONFIG_PAIRS[@]}"
+do
+    IFS='=' read -ra CONFIG <<< "$CONFIG_PAIR"
+    VAR="${CONFIG[0]}"
+    VAL="${CONFIG[1]}"
+    Configure $CONF "$VAR" "$VAL"
+done
+
+if [ -n "$DEBUG" ]; then
+    echo ">>> Result config file"
+    cat $CONF
+fi
+$CMD $CONF

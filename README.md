@@ -1,27 +1,16 @@
-REDIS KUBERNETES CLUSTER
-========================
+# REDIS CLUSTER FOR DOCKER
 
-## How to choose redis or sentinel
-**$SENTINEL** set to 1. Run application as sentinel. If SENTINEL doesn't set, application will be run as Redis server.
-**$MASTER** set to 1. Run application as redis master.
+## How cluster for redis works
 
-## Sentinel ENV Variables
+Please read [official documentation](https://redis.io/topics/cluster-tutorial) to understand how cluster should look like
 
-**$MASTER_NAME** master name (default: mymaster)  
-**$MASTER_IP** master ip (default: 127.0.0.1)  
-**$MASTER_PORT** master port (default: 6379)  
-**$QUORUM** how many sentinels cluster needed to get dision (default: mymaster)  
-**$SENTINEL** sentinel port (default: 26379)  
-**$ANNOUNCE_IP** sentinel announce ip (option variable)  
-**$ANNOUNCE_PORT** sentinel announce port (option variable)  
+## Run mode
 
-## Redis ENV Variables
+You can set mode by 2 environment variables.
 
-**$REDIS_PORT** redis port (default: 6379)  
+* `SENTINEL=1` - run container as a sentinel
+* `MASTER=1`(work if `SENTINEL<>1`) - run application as a redis master
 
-### Redis as slave variables
+## ENV Variables
 
-**$MASTER_ADDRESS** master ip address (default: 127.0.0.1)  
-**$MASTER_PORT** master port (default: 6379)  
-**$ANNOUNCE_IP** redis slave announce ip (option variable)  
-**$ANNOUNCE_PORT** redis slave announce port (option variable)  
+Check [Dockerfile](./Dockerfile) for more details. `ENV` directives will guide you.
