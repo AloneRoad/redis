@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3'
 networks:
   cluster:
     driver: bridge
@@ -19,10 +19,11 @@ services:
       MASTER: 1
       REDIS_PORT: 6370
       ANNOUNCE_PORT: 6370
-      ANNOUNCE_IP: master
+      ANNOUNCE_IP: 172.16.238.51
       CONFIGS: 'lua-time-limit=5432;cluster-node-timeout=15000'
     networks:
       cluster:
+        ipv4_address: 172.16.238.51
         aliases:
           - master
 
@@ -31,12 +32,13 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      MASTER_ADDRESS: master
+      MASTER_ADDRESS: 172.16.238.51
       MASTER_PORT: 6370
       REDIS_PORT: 6380
-      ANNOUNCE_IP: slave1
+      ANNOUNCE_IP: 172.16.238.52
     networks:
       cluster:
+        ipv4_address: 172.16.238.52
         aliases:
           - slave1
 
@@ -45,12 +47,13 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      MASTER_ADDRESS: master
+      MASTER_ADDRESS: 172.16.238.51
       MASTER_PORT: 6370
       REDIS_PORT: 6381
-      ANNOUNCE_IP: slave2
+      ANNOUNCE_IP: 172.16.238.53
     networks:
       cluster:
+        ipv4_address: 172.16.238.53
         aliases:
           - slave2
 
@@ -61,7 +64,7 @@ services:
     environment:
       SENTINEL: 1
       ANNOUNCE_IP: 172.16.238.10
-      MASTER_IP: master
+      MASTER_IP: 172.16.238.51
       MASTER_PORT: 6370 
       QUORUM: 2
     networks:
@@ -78,7 +81,7 @@ services:
       SENTINEL: 1
       ANNOUNCE_IP: 172.16.238.11
       SENTINEL_PORT: 26380
-      MASTER_IP: master
+      MASTER_IP: 172.16.238.51
       MASTER_PORT: 6370 
       QUORUM: 2
     networks:
@@ -95,7 +98,7 @@ services:
       SENTINEL: 1
       ANNOUNCE_IP: 172.16.238.12
       SENTINEL_PORT: 26381
-      MASTER_IP: master
+      MASTER_IP: 172.16.238.51
       MASTER_PORT: 6370 
       QUORUM: 2
     networks:
