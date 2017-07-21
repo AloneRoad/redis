@@ -1,69 +1,108 @@
-version: '2.1'
+version: '3'
+networks:
+  cluster:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.238.0/24
 
 services:
-  slave:
+  master:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
+      MASTER: 1
+      REDIS_PORT: 6370
+      ANNOUNCE_PORT: 6370
+      ANNOUNCE_IP: 172.16.238.51
+      CONFIGS: 'lua-time-limit=5432;cluster-node-timeout=15000'
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.51
+        aliases:
+          - master
+
+  slave1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MASTER_ADDRESS: 172.16.238.51
+      MASTER_PORT: 6370
       REDIS_PORT: 6380
-      ANNOUNCE_PORT: 6380
-      ANNOUNCE_IP: 127.0.0.1
-    network_mode: "service:redis-master"
-    depends_on:
-      - redis-master
+      ANNOUNCE_IP: 172.16.238.52
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.52
+        aliases:
+          - slave1
+
   slave2:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      environment:
-        MASTER_ADDRESS: 127.0.0.1
-        REDIS_PORT: 6381
-        ANNOUNCE_PORT: 6381
-        ANNOUNCE_IP: 127.0.0.1
-      network_mode: "service:redis-master"
-      depends_on:
-        - redis-master
-  redis-master:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      environment:
-        MASTER: 1
-        REDIS_PORT: 6379
-        ANNOUNCE_PORT: 6379
-        ANNOUNCE_IP: 127.0.0.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MASTER_ADDRESS: 172.16.238.51
+      MASTER_PORT: 6370
+      REDIS_PORT: 6381
+      ANNOUNCE_IP: 172.16.238.53
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.53
+        aliases:
+          - slave2
+
   sentinel1:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      environment:
-        SENTINEL: 1
-        SLAVE_COUNT: 2
-      network_mode: "service:redis-master"
-      depends_on:
-        - redis-master
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SENTINEL: 1
+      ANNOUNCE_IP: 172.16.238.10
+      MASTER_IP: 172.16.238.51
+      MASTER_PORT: 6370 
+      QUORUM: 2
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.10
+        aliases:
+          - sentinel1
+
   sentinel2:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      environment:
-        SENTINEL: 1
-        QUORUM: 2
-        ANNOUNCE_PORT: 26380
-        SENTINEL_PORT: 26380
-      network_mode: "service:redis-master"
-      depends_on:
-        - redis-master
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SENTINEL: 1
+      ANNOUNCE_IP: 172.16.238.11
+      SENTINEL_PORT: 26380
+      MASTER_IP: 172.16.238.51
+      MASTER_PORT: 6370 
+      QUORUM: 2
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.11
+        aliases:
+          - sentinel2
+
   sentinel3:
-      build:
-        context: .
-        dockerfile: Dockerfile
-      environment:
-        SENTINEL: 1
-        SLAVE_COUNT: 2
-        ANNOUNCE_PORT: 26381
-        SENTINEL_PORT: 26381
-      network_mode: "service:redis-master"
-      depends_on:
-        - redis-master
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SENTINEL: 1
+      ANNOUNCE_IP: 172.16.238.12
+      SENTINEL_PORT: 26381
+      MASTER_IP: 172.16.238.51
+      MASTER_PORT: 6370 
+      QUORUM: 2
+    networks:
+      cluster:
+        ipv4_address: 172.16.238.12
+        aliases:
+          - sentinel3
