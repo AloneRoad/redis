@@ -34,6 +34,9 @@ if [ -n "$SENTINEL" ]; then
     Configure $CONF 'port' "$SENTINEL_PORT"
     Configure $CONF 'sentinel announce-ip' "$ANNOUNCE_IP"
     Configure $CONF 'sentinel announce-port' "$SENTINEL_PORT" 
+    Configure $CONF 'sentinel down-after-milliseconds' "$MASTER_NAME 30000"
+    Configure $CONF 'sentinel parallel-syncs' "$MASTER_NAME 1"
+    Configure $CONF 'sentinel failover-timeout' "$MASTER_NAME 180000"
     CMD='redis-sentinel'
     
 else
