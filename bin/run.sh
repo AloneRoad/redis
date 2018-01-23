@@ -8,7 +8,7 @@ Configure() {
 
     if [[ "$VAL" != "" ]]; then
         CONFIG_LINE="$VAR $VAL"
-        sed -e "s/\(^#*\ *$VAR\(.*\)$\)/$CONFIG_LINE/g" $CONFIG_FILE > /tmp/config.tmp && mv -f /tmp/config.tmp $CONFIG_FILE
+        sed -e "s/\(^#*\ *$VAR \(.*\)$\)/$CONFIG_LINE/g" $CONFIG_FILE > /tmp/config.tmp && mv -f /tmp/config.tmp $CONFIG_FILE
 
         grep "^$CONFIG_LINE" $CONFIG_FILE
 
